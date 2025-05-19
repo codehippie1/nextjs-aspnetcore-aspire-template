@@ -4,24 +4,18 @@ trigger:
       - main
   paths:
     include:
-      - 'frontend/**'
+      - frontend/**
 
 pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  - name: dockerRegistryServiceConnection
-    value: 'your-acr-service-connection'
-  - name: imageRepository
-    value: 'nextjs-app'
-  - name: containerRegistry
-    value: 'your-acr.azurecr.io'
-  - name: dockerfilePath
-    value: '$(Build.SourcesDirectory)/frontend/Dockerfile'
-  - name: tag
-    value: '$(Build.BuildId)'
-  - name: vmImageName
-    value: 'ubuntu-latest'
+  dockerRegistryServiceConnection: 'your-acr-service-connection'
+  imageRepository: 'aspireapp-frontend'
+  containerRegistryName: 'your-acr-name'
+  dockerfilePath: 'frontend/Dockerfile'
+  tag: '$(Build.BuildId)'
+  appServiceName: 'your-frontend-app-service-name'
 
 stages:
 - stage: Build
@@ -30,17 +24,6 @@ stages:
   - job: Build
     displayName: Build
     steps:
-    - task: NodeTool@0
-      inputs:
-        versionSpec: '18.x'
-      displayName: 'Install Node.js'
-
-    - script: |
-        npm install
-        npm run build
-      displayName: 'npm install and build'
-      workingDirectory: '$(Build.SourcesDirectory)/frontend'
-
     - task: Docker@2
       displayName: Build and push an image to container registry
       inputs:
@@ -58,25 +41,16 @@ stages:
   condition: succeeded()
   jobs:
   - deployment: Deploy
-    displayName: Deploy
+    displayName: Deploy to App Service
     environment: 'production'
     strategy:
       runOnce:
         deploy:
           steps:
-          - task: AzureCLI@2
-            displayName: Deploy to Azure Container Apps
+          - task: AzureWebAppContainer@1
+            displayName: Deploy to Azure App Service
             inputs:
               azureSubscription: 'your-azure-subscription'
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              inlineScript: |
-                az containerapp create \
-                  --name nextjs-app \
-                  --resource-group your-resource-group \
-                  --image $(containerRegistry)/$(imageRepository):$(tag) \
-                  --target-port 3000 \
-                  --ingress external \
-                  --min-replicas 1 \
-                  --max-replicas 3 \
-                  --env-vars API_URL=https://aspire-app.your-domain.com 
+              appName: $(appServiceName)
+              imageName: $(containerRegistryName).azurecr.io/$(imageRepository):$(tag)
+              containerCommand: '' 
