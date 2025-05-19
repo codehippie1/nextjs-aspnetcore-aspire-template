@@ -133,4 +133,27 @@ $RECYCLE.BIN/
 *.msp
 
 # Windows shortcuts
-*.lnk 
+*.lnk
+
+# Local development
+appsettings.Development.json
+appsettings.Local.json
+*.Development.json
+*.Local.json
+
+# Secrets and certificates
+*.pfx
+*.key
+*.pem
+*.crt
+*.cer
+*.p12
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# IDE
+.idea/
+*.swp
+*.swo 

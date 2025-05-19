@@ -1,5 +1,8 @@
-# Project documentation
+# Documentation
 Requirements.md
+ui-requirements.md
+*.md
+!README.md
 
 # .NET
 *.swp
