@@ -5,6 +5,8 @@ import { Product } from '@/lib/types'
 import { config } from '@/lib/config'
 
 async function getProducts(): Promise<Product[]> {
+  console.log('Fetching products-------------------------------------------->>>>>>>>>>>>>>>>>>>>>');
+  console.log(`${config.apiUrl}/api/products`);
   try {
     const res = await fetch(`${config.apiUrl}/api/products`, { 
       next: { revalidate: 60 },
