@@ -1,0 +1,77 @@
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - 'backend/**'
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - name: dockerRegistryServiceConnection
+    value: 'your-acr-service-connection'
+  - name: imageRepository
+    value: 'aspire-app'
+  - name: containerRegistry
+    value: 'your-acr.azurecr.io'
+  - name: dockerfilePath
+    value: '$(Build.SourcesDirectory)/backend/AspireApp/AspireApp.AppHost/Dockerfile'
+  - name: tag
+    value: '$(Build.BuildId)'
+  - name: vmImageName
+    value: 'ubuntu-latest'
+
+stages:
+- stage: Build
+  displayName: Build and push stage
+  jobs:
+  - job: Build
+    displayName: Build
+    steps:
+    - task: DotNetCoreCLI@2
+      displayName: Build
+      inputs:
+        command: 'build'
+        projects: '$(Build.SourcesDirectory)/backend/AspireApp/AspireApp.sln'
+        arguments: '--configuration Release'
+
+    - task: Docker@2
+      displayName: Build and push an image to container registry
+      inputs:
+        command: buildAndPush
+        repository: $(imageRepository)
+        dockerfile: $(dockerfilePath)
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          $(tag)
+          latest
+
+- stage: Deploy
+  displayName: Deploy stage
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+  - deployment: Deploy
+    displayName: Deploy
+    environment: 'production'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureCLI@2
+            displayName: Deploy to Azure Container Apps
+            inputs:
+              azureSubscription: 'your-azure-subscription'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az containerapp create \
+                  --name aspire-app \
+                  --resource-group your-resource-group \
+                  --image $(containerRegistry)/$(imageRepository):$(tag) \
+                  --target-port 80 \
+                  --ingress external \
+                  --min-replicas 1 \
+                  --max-replicas 3 
