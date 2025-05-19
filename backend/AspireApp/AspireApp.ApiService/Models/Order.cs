@@ -6,6 +6,7 @@ public class Order
     public int UserId { get; set; }
     public User User { get; set; } = null!;
     public string Status { get; set; } = string.Empty;
+    public string State { get; set; } = string.Empty;
     public decimal TotalAmount { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }

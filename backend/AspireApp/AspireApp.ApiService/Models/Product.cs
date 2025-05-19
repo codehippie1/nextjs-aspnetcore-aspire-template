@@ -8,6 +8,7 @@ public class Product
     public decimal Price { get; set; }
     public int StockLevel { get; set; }
     public int ReorderThreshold { get; set; }
+    public string Category { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 } 

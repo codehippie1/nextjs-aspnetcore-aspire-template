@@ -3,6 +3,7 @@
 import { Container, Grid, Paper, Typography } from '@mui/material'
 import { PieChart, LineChart } from '@mui/x-charts'
 import { Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material'
+import { useEffect, useState } from 'react'
 
 interface DashboardProps {
   orders: any[]
@@ -10,6 +11,12 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ orders, products }: DashboardProps) {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   // Process data for charts
   const orderStateData = orders.reduce((acc: any[], order: any) => {
     const state = order.state || 'Pending'
@@ -36,6 +43,10 @@ export default function Dashboard({ orders, products }: DashboardProps) {
     product: product.name,
     stock: product.stockLevel
   }))
+
+  if (!mounted) {
+    return null // or a loading skeleton
+  }
 
   return (
     <Container maxWidth="xl" className="p-4">
