@@ -8,36 +8,44 @@ namespace AspireApp.ApiService.Controllers;
 [Route("api/[controller]")]
 public class OrdersController : ControllerBase
 {
+    private readonly List<Order> _orders;
+
+    public OrdersController()
+    {
+        _orders = MockData.GenerateOrders();
+    }
+
     [HttpGet]
     public ActionResult<IEnumerable<Order>> GetOrders()
     {
-        return Ok(MockDataService.Orders);
+        return Ok(_orders);
     }
 
     [HttpGet("{id}")]
     public ActionResult<Order> GetOrder(int id)
     {
-        var order = MockDataService.Orders.FirstOrDefault(o => o.Id == id);
+        var order = _orders.FirstOrDefault(o => o.Id == id);
         if (order == null)
+        {
             return NotFound();
-
+        }
         return Ok(order);
     }
 
     [HttpPost]
     public ActionResult<Order> CreateOrder(Order order)
     {
-        order.Id = MockDataService.Orders.Max(o => o.Id) + 1;
+        order.Id = _orders.Max(o => o.Id) + 1;
         order.CreatedAt = DateTime.UtcNow;
         order.Status = "Pending";
-        MockDataService.Orders.Add(order);
+        _orders.Add(order);
         return CreatedAtAction(nameof(GetOrder), new { id = order.Id }, order);
     }
 
     [HttpPut("{id}")]
     public IActionResult UpdateOrder(int id, Order order)
     {
-        var existingOrder = MockDataService.Orders.FirstOrDefault(o => o.Id == id);
+        var existingOrder = _orders.FirstOrDefault(o => o.Id == id);
         if (existingOrder == null)
             return NotFound();
 
@@ -58,11 +66,11 @@ public class OrdersController : ControllerBase
     [HttpDelete("{id}")]
     public IActionResult DeleteOrder(int id)
     {
-        var order = MockDataService.Orders.FirstOrDefault(o => o.Id == id);
+        var order = _orders.FirstOrDefault(o => o.Id == id);
         if (order == null)
             return NotFound();
 
-        MockDataService.Orders.Remove(order);
+        _orders.Remove(order);
         return NoContent();
     }
 
@@ -71,12 +79,12 @@ public class OrdersController : ControllerBase
     {
         var stats = new
         {
-            TotalOrders = MockDataService.Orders.Count,
-            TotalRevenue = MockDataService.Orders.Sum(o => o.TotalAmount),
-            OrdersByStatus = MockDataService.Orders
+            TotalOrders = _orders.Count,
+            TotalRevenue = _orders.Sum(o => o.TotalAmount),
+            OrdersByStatus = _orders
                 .GroupBy(o => o.Status)
                 .Select(g => new { Status = g.Key, Count = g.Count() }),
-            RecentOrders = MockDataService.Orders
+            RecentOrders = _orders
                 .OrderByDescending(o => o.CreatedAt)
                 .Take(5)
                 .Select(o => new
@@ -85,11 +93,7 @@ public class OrdersController : ControllerBase
                     o.Status,
                     o.TotalAmount,
                     o.CreatedAt,
-                    UserName = MockDataService.Users
-                        .FirstOrDefault(u => u.Id == o.UserId)?
-                        .FirstName + " " + MockDataService.Users
-                        .FirstOrDefault(u => u.Id == o.UserId)?
-                        .LastName
+                    UserName = o.User?.FirstName + " " + o.User?.LastName
                 })
         };
 

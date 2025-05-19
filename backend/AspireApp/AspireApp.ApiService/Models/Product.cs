@@ -10,5 +10,4 @@ public class Product
     public int ReorderThreshold { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
-    public List<OrderItem> OrderItems { get; set; } = new();
 } 

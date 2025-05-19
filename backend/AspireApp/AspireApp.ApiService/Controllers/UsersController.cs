@@ -8,35 +8,45 @@ namespace AspireApp.ApiService.Controllers;
 [Route("api/[controller]")]
 public class UsersController : ControllerBase
 {
+    private readonly List<User> _users;
+    private readonly List<Order> _orders;
+
+    public UsersController()
+    {
+        _users = MockData.GenerateUsers();
+        _orders = MockData.GenerateOrders();
+    }
+
     [HttpGet]
     public ActionResult<IEnumerable<User>> GetUsers()
     {
-        return Ok(MockDataService.Users);
+        return Ok(_users);
     }
 
     [HttpGet("{id}")]
     public ActionResult<User> GetUser(int id)
     {
-        var user = MockDataService.Users.FirstOrDefault(u => u.Id == id);
+        var user = _users.FirstOrDefault(u => u.Id == id);
         if (user == null)
+        {
             return NotFound();
-
+        }
         return Ok(user);
     }
 
     [HttpPost]
     public ActionResult<User> CreateUser(User user)
     {
-        user.Id = MockDataService.Users.Max(u => u.Id) + 1;
+        user.Id = _users.Max(u => u.Id) + 1;
         user.CreatedAt = DateTime.UtcNow;
-        MockDataService.Users.Add(user);
+        _users.Add(user);
         return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
     }
 
     [HttpPut("{id}")]
     public IActionResult UpdateUser(int id, User user)
     {
-        var existingUser = MockDataService.Users.FirstOrDefault(u => u.Id == id);
+        var existingUser = _users.FirstOrDefault(u => u.Id == id);
         if (existingUser == null)
             return NotFound();
 
@@ -51,18 +61,18 @@ public class UsersController : ControllerBase
     [HttpDelete("{id}")]
     public IActionResult DeleteUser(int id)
     {
-        var user = MockDataService.Users.FirstOrDefault(u => u.Id == id);
+        var user = _users.FirstOrDefault(u => u.Id == id);
         if (user == null)
             return NotFound();
 
-        MockDataService.Users.Remove(user);
+        _users.Remove(user);
         return NoContent();
     }
 
     [HttpGet("{id}/orders")]
     public ActionResult<IEnumerable<Order>> GetUserOrders(int id)
     {
-        var orders = MockDataService.Orders.Where(o => o.UserId == id).ToList();
+        var orders = _orders.Where(o => o.UserId == id).ToList();
         return Ok(orders);
     }
 } 
