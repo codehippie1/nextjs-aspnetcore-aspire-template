@@ -2,16 +2,102 @@
 
 import { Container, Grid, Paper, Typography } from '@mui/material'
 import { PieChart, LineChart } from '@mui/x-charts'
-import { Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material'
+import { Table, TableBody, TableCell, TableHead, TableRow, TablePagination, Collapse, IconButton } from '@mui/material'
 import { useEffect, useState } from 'react'
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 
 interface DashboardProps {
   orders: any[]
   products: any[]
 }
 
+interface OrderRowProps {
+  order: any
+  products: any[]
+}
+
+function OrderRow({ order, products }: OrderRowProps) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <>
+      <TableRow 
+        hover 
+        className="cursor-pointer"
+        onClick={() => window.location.href = `/orders/${order.id}`}
+      >
+        <TableCell>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation()
+              setOpen(!open)
+            }}
+          >
+            {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+          </IconButton>
+        </TableCell>
+        <TableCell>{order.id}</TableCell>
+        <TableCell>{new Date(order.createdAt).toLocaleString()}</TableCell>
+        <TableCell>{order.userId}</TableCell>
+        <TableCell>{`${order.userId} - Customer ${order.userId}`}</TableCell>
+        <TableCell align="right">${order.totalAmount.toFixed(2)}</TableCell>
+        <TableCell>
+          <span className={`px-2 py-1 rounded-full text-sm ${
+            order.state === 'Delivered' ? 'bg-green-100 text-green-800' :
+            order.state === 'Shipped' ? 'bg-blue-100 text-blue-800' :
+            order.state === 'Processing' ? 'bg-yellow-100 text-yellow-800' :
+            'bg-gray-100 text-gray-800'
+          }`}>
+            {order.state}
+          </span>
+        </TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={7}>
+          <Collapse in={open} timeout="auto" unmountOnExit>
+            <div className="p-4">
+              <Typography variant="h6" gutterBottom component="div">
+                Products in Order
+              </Typography>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Product ID</TableCell>
+                    <TableCell>Product Name</TableCell>
+                    <TableCell>Quantity</TableCell>
+                    <TableCell align="right">Unit Price</TableCell>
+                    <TableCell align="right">Total</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {order.items?.map((item: any) => {
+                    const product = products.find(p => p.id === item.productId)
+                    return (
+                      <TableRow key={item.id}>
+                        <TableCell>{item.productId}</TableCell>
+                        <TableCell>{product?.name || 'Unknown Product'}</TableCell>
+                        <TableCell>{item.quantity}</TableCell>
+                        <TableCell align="right">${item.unitPrice.toFixed(2)}</TableCell>
+                        <TableCell align="right">${(item.quantity * item.unitPrice).toFixed(2)}</TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </Collapse>
+        </TableCell>
+      </TableRow>
+    </>
+  )
+}
+
 export default function Dashboard({ orders, products }: DashboardProps) {
   const [mounted, setMounted] = useState(false)
+  const [page, setPage] = useState(0)
+  const [rowsPerPage] = useState(20)
 
   useEffect(() => {
     setMounted(true)
@@ -44,8 +130,12 @@ export default function Dashboard({ orders, products }: DashboardProps) {
     stock: product.stockLevel
   }))
 
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage)
+  }
+
   if (!mounted) {
-    return null // or a loading skeleton
+    return null
   }
 
   return (
@@ -130,13 +220,15 @@ export default function Dashboard({ orders, products }: DashboardProps) {
         <Grid item xs={12}>
           <Paper className="p-4">
             <Typography variant="h6" className="mb-4">Recent Orders</Typography>
-            <div className="overflow-x-auto">
-              <Table>
+            <div className="overflow-x-auto" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+              <Table stickyHeader>
                 <TableHead>
                   <TableRow>
+                    <TableCell padding="checkbox" />
                     <TableCell>Order ID</TableCell>
                     <TableCell>Date & Time</TableCell>
-                    <TableCell>Customer</TableCell>
+                    <TableCell>Customer ID</TableCell>
+                    <TableCell>Customer Name</TableCell>
                     <TableCell align="right">Total</TableCell>
                     <TableCell>State</TableCell>
                   </TableRow>
@@ -144,32 +236,20 @@ export default function Dashboard({ orders, products }: DashboardProps) {
                 <TableBody>
                   {orders
                     .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                    .slice(0, 20)
+                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                     .map((order: any) => (
-                      <TableRow 
-                        key={order.id} 
-                        hover 
-                        className="cursor-pointer"
-                        onClick={() => window.location.href = `/orders/${order.id}`}
-                      >
-                        <TableCell>{order.id}</TableCell>
-                        <TableCell>{new Date(order.createdAt).toLocaleString()}</TableCell>
-                        <TableCell>{order.userId}</TableCell>
-                        <TableCell align="right">${order.totalAmount.toFixed(2)}</TableCell>
-                        <TableCell>
-                          <span className={`px-2 py-1 rounded-full text-sm ${
-                            order.state === 'Delivered' ? 'bg-green-100 text-green-800' :
-                            order.state === 'Shipped' ? 'bg-blue-100 text-blue-800' :
-                            order.state === 'Processing' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {order.state}
-                          </span>
-                        </TableCell>
-                      </TableRow>
+                      <OrderRow key={order.id} order={order} products={products} />
                     ))}
                 </TableBody>
               </Table>
+              <TablePagination
+                component="div"
+                count={orders.length}
+                page={page}
+                onPageChange={handleChangePage}
+                rowsPerPage={rowsPerPage}
+                rowsPerPageOptions={[20]}
+              />
             </div>
           </Paper>
         </Grid>
