@@ -3,239 +3,254 @@
 import { Container, Grid, Paper, Typography } from '@mui/material'
 import { PieChart, LineChart } from '@mui/x-charts'
 import { Table, TableBody, TableCell, TableHead, TableRow, TablePagination, Collapse, IconButton } from '@mui/material'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
-import { Order } from '@/types/order'
-import { Product } from '@/types/product'
 
 interface DashboardProps {
-  orders: Order[]
-  products: Product[]
+  orders: any[]
+  products: any[]
+}
+
+interface OrderRowProps {
+  order: any
+  products: any[]
+}
+
+function OrderRow({ order, products }: OrderRowProps) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <>
+      <TableRow 
+        hover 
+        className="cursor-pointer"
+        onClick={() => window.location.href = `/orders/${order.id}`}
+      >
+        <TableCell>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation()
+              setOpen(!open)
+            }}
+          >
+            {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+          </IconButton>
+        </TableCell>
+        <TableCell>{order.id}</TableCell>
+        <TableCell>{new Date(order.createdAt).toLocaleString()}</TableCell>
+        <TableCell>{order.userId}</TableCell>
+        <TableCell>{`${order.userId} - Customer ${order.userId}`}</TableCell>
+        <TableCell align="right">${order.totalAmount.toFixed(2)}</TableCell>
+        <TableCell>
+          <span className={`px-2 py-1 rounded-full text-sm ${
+            order.state === 'Delivered' ? 'bg-green-100 text-green-800' :
+            order.state === 'Shipped' ? 'bg-blue-100 text-blue-800' :
+            order.state === 'Processing' ? 'bg-yellow-100 text-yellow-800' :
+            'bg-gray-100 text-gray-800'
+          }`}>
+            {order.state}
+          </span>
+        </TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={7}>
+          <Collapse in={open} timeout="auto" unmountOnExit>
+            <div className="p-4">
+              <Typography variant="h6" gutterBottom component="div">
+                Products in Order
+              </Typography>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Product ID</TableCell>
+                    <TableCell>Product Name</TableCell>
+                    <TableCell>Quantity</TableCell>
+                    <TableCell align="right">Unit Price</TableCell>
+                    <TableCell align="right">Total</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {order.items?.map((item: any) => {
+                    const product = products.find(p => p.id === item.productId)
+                    return (
+                      <TableRow key={item.id}>
+                        <TableCell>{item.productId}</TableCell>
+                        <TableCell>{product?.name || 'Unknown Product'}</TableCell>
+                        <TableCell>{item.quantity}</TableCell>
+                        <TableCell align="right">${item.unitPrice.toFixed(2)}</TableCell>
+                        <TableCell align="right">${(item.quantity * item.unitPrice).toFixed(2)}</TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </Collapse>
+        </TableCell>
+      </TableRow>
+    </>
+  )
 }
 
 export default function Dashboard({ orders, products }: DashboardProps) {
+  const [mounted, setMounted] = useState(false)
   const [page, setPage] = useState(0)
-  const [rowsPerPage, setRowsPerPage] = useState(5)
-  const [openOrder, setOpenOrder] = useState<string | null>(null)
+  const [rowsPerPage] = useState(20)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Process data for charts
+  const orderStateData = orders.reduce((acc: any[], order: any) => {
+    const state = order.state || 'Pending'
+    const existing = acc.find(item => item.state === state)
+    if (existing) {
+      existing.count++
+    } else {
+      acc.push({ state, count: 1 })
+    }
+    return acc
+  }, [])
+
+  const orderVolumeData = Array.from({ length: 30 }, (_, i) => {
+    const date = new Date()
+    date.setDate(date.getDate() - (29 - i))
+    const dateStr = date.toISOString().split('T')[0]
+    const count = orders.filter((order: any) => 
+      new Date(order.createdAt).toISOString().split('T')[0] === dateStr
+    ).length
+    return { date: dateStr, orders: count }
+  })
+
+  const inventoryData = products.map((product: any) => ({
+    product: product.name,
+    stock: product.stockLevel
+  }))
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage)
   }
 
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(parseInt(event.target.value, 10))
-    setPage(0)
-  }
-
-  const toggleOrder = (orderId: string) => {
-    setOpenOrder(openOrder === orderId ? null : orderId)
-  }
-
-  // Helper function to format date consistently
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toISOString().split('T')[0] // YYYY-MM-DD format
-  }
-
-  // Process data for charts
-  const orderStates = orders.reduce((acc, order) => {
-    acc[order.state] = (acc[order.state] || 0) + 1
-    return acc
-  }, {} as Record<string, number>)
-
-  // Sort dates and get last 30 days
-  const sortedDates = Object.entries(
-    orders.reduce((acc, order) => {
-      const date = formatDate(order.createdAt)
-      acc[date] = (acc[date] || 0) + 1
-      return acc
-    }, {} as Record<string, number>)
-  ).sort(([a], [b]) => a.localeCompare(b))
-
-  const last30Days = sortedDates.slice(-30)
-  const orderDates = Object.fromEntries(last30Days)
-
-  const stockLevels = products.reduce((acc, product) => {
-    const level = product.stockLevel < product.reorderThreshold ? 'Low' : 'Good'
-    acc[level] = (acc[level] || 0) + 1
-    return acc
-  }, {} as Record<string, number>)
-
-  // Helper function to format price
-  const formatPrice = (price: number | undefined) => {
-    return price ? `$${price.toFixed(2)}` : '$0.00'
+  if (!mounted) {
+    return null
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Grid container spacing={3}>
-        {/* Order States Chart */}
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 400 }}>
-            <Typography component="h2" variant="h6" color="primary" gutterBottom>
-              Order States
-            </Typography>
-            <PieChart
-              series={[
-                {
-                  data: Object.entries(orderStates).map(([label, value]) => ({
-                    id: label,
-                    value,
-                    label,
-                  })),
-                },
-              ]}
-              width={400}
-              height={300}
-            />
-          </Paper>
+    <Container maxWidth="xl" className="p-4">
+      <Typography variant="h4" component="h1" className="mb-6">
+        Admin Dashboard
+      </Typography>
+      
+      <Grid container spacing={4}>
+        {/* Top Row: Charts */}
+        <Grid container item spacing={4}>
+          {/* Order State Distribution */}
+          <Grid item xs={12} md={4}>
+            <Paper className="p-4 h-full">
+              <Typography variant="h6" className="mb-4">Order Distribution by State</Typography>
+              <div className="h-[300px]">
+                <PieChart
+                  series={[
+                    {
+                      data: orderStateData.map(item => ({
+                        id: item.state,
+                        value: item.count,
+                        label: item.state
+                      })),
+                      highlightScope: { faded: 'global', highlighted: 'item' },
+                      faded: { innerRadius: 30, additionalRadius: -30 },
+                    },
+                  ]}
+                  height={300}
+                />
+              </div>
+            </Paper>
+          </Grid>
+
+          {/* Order Volume */}
+          <Grid item xs={12} md={4}>
+            <Paper className="p-4 h-full">
+              <Typography variant="h6" className="mb-4">Order Volume (Last 30 Days)</Typography>
+              <div className="h-[300px]">
+                <LineChart
+                  xAxis={[{ 
+                    data: orderVolumeData.map(d => d.date),
+                    scaleType: 'band',
+                  }]}
+                  series={[
+                    {
+                      data: orderVolumeData.map(d => d.orders),
+                      area: true,
+                    },
+                  ]}
+                  height={300}
+                />
+              </div>
+            </Paper>
+          </Grid>
+
+          {/* Inventory Levels */}
+          <Grid item xs={12} md={4}>
+            <Paper className="p-4 h-full">
+              <Typography variant="h6" className="mb-4">Product Inventory Levels</Typography>
+              <div className="h-[300px]">
+                <PieChart
+                  series={[
+                    {
+                      data: inventoryData.map(item => ({
+                        id: item.product,
+                        value: item.stock,
+                        label: item.product
+                      })),
+                      highlightScope: { faded: 'global', highlighted: 'item' },
+                      faded: { innerRadius: 30, additionalRadius: -30 },
+                    },
+                  ]}
+                  height={300}
+                />
+              </div>
+            </Paper>
+          </Grid>
         </Grid>
 
-        {/* Order Volume Chart */}
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 400 }}>
-            <Typography component="h2" variant="h6" color="primary" gutterBottom>
-              Order Volume (Last 30 Days)
-            </Typography>
-            <LineChart
-              xAxis={[{ 
-                data: Object.keys(orderDates),
-                scaleType: 'band',
-                valueFormatter: (value) => {
-                  const date = new Date(value)
-                  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                }
-              }]}
-              series={[
-                {
-                  data: Object.values(orderDates),
-                },
-              ]}
-              width={400}
-              height={300}
-              margin={{ left: 60, right: 30, top: 20, bottom: 60 }}
-            />
-          </Paper>
-        </Grid>
-
-        {/* Inventory Levels Chart */}
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 400 }}>
-            <Typography component="h2" variant="h6" color="primary" gutterBottom>
-              Inventory Levels
-            </Typography>
-            <PieChart
-              series={[
-                {
-                  data: Object.entries(stockLevels).map(([label, value]) => ({
-                    id: label,
-                    value,
-                    label,
-                  })),
-                },
-              ]}
-              width={400}
-              height={300}
-            />
-          </Paper>
-        </Grid>
-
-        {/* Orders Table */}
+        {/* Bottom Row: Order History */}
         <Grid item xs={12}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
-            <Typography component="h2" variant="h6" color="primary" gutterBottom>
-              Recent Orders
-            </Typography>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell />
-                  <TableCell>Order ID</TableCell>
-                  <TableCell>Date</TableCell>
-                  <TableCell>Customer</TableCell>
-                  <TableCell>Total</TableCell>
-                  <TableCell>State</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {orders
-                  .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                  .map((order) => (
-                    <>
-                      <TableRow key={order.id}>
-                        <TableCell>
-                          <IconButton
-                            size="small"
-                            onClick={() => toggleOrder(order.id)}
-                          >
-                            {openOrder === order.id ? (
-                              <KeyboardArrowUpIcon />
-                            ) : (
-                              <KeyboardArrowDownIcon />
-                            )}
-                          </IconButton>
-                        </TableCell>
-                        <TableCell>{order.id}</TableCell>
-                        <TableCell>
-                          {new Date(order.createdAt).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric'
-                          })}
-                        </TableCell>
-                        <TableCell>{order.customerName}</TableCell>
-                        <TableCell>{formatPrice(order.totalAmount)}</TableCell>
-                        <TableCell>{order.state}</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell
-                          style={{ paddingBottom: 0, paddingTop: 0 }}
-                          colSpan={6}
-                        >
-                          <Collapse
-                            in={openOrder === order.id}
-                            timeout="auto"
-                            unmountOnExit
-                          >
-                            <Table size="small">
-                              <TableHead>
-                                <TableRow>
-                                  <TableCell>Product</TableCell>
-                                  <TableCell>Quantity</TableCell>
-                                  <TableCell>Price</TableCell>
-                                  <TableCell>Total</TableCell>
-                                </TableRow>
-                              </TableHead>
-                              <TableBody>
-                                {order.items.map((item) => (
-                                  <TableRow key={item.id}>
-                                    <TableCell>{item.productName}</TableCell>
-                                    <TableCell>{item.quantity}</TableCell>
-                                    <TableCell>{formatPrice(item.price)}</TableCell>
-                                    <TableCell>
-                                      {formatPrice(item.price && item.quantity ? item.price * item.quantity : 0)}
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          </Collapse>
-                        </TableCell>
-                      </TableRow>
-                    </>
-                  ))}
-              </TableBody>
-            </Table>
-            <TablePagination
-              rowsPerPageOptions={[5, 10, 25]}
-              component="div"
-              count={orders.length}
-              rowsPerPage={rowsPerPage}
-              page={page}
-              onPageChange={handleChangePage}
-              onRowsPerPageChange={handleChangeRowsPerPage}
-            />
+          <Paper className="p-4">
+            <Typography variant="h6" className="mb-4">Recent Orders</Typography>
+            <div className="overflow-x-auto" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+              <Table stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell padding="checkbox" />
+                    <TableCell>Order ID</TableCell>
+                    <TableCell>Date & Time</TableCell>
+                    <TableCell>Customer ID</TableCell>
+                    <TableCell>Customer Name</TableCell>
+                    <TableCell align="right">Total</TableCell>
+                    <TableCell>State</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {orders
+                    .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                    .map((order: any) => (
+                      <OrderRow key={order.id} order={order} products={products} />
+                    ))}
+                </TableBody>
+              </Table>
+              <TablePagination
+                component="div"
+                count={orders.length}
+                page={page}
+                onPageChange={handleChangePage}
+                rowsPerPage={rowsPerPage}
+                rowsPerPageOptions={[20]}
+              />
+            </div>
           </Paper>
         </Grid>
       </Grid>

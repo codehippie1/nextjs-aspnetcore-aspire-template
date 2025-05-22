@@ -1,51 +1,59 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+import { config } from './config'
 
-export async function fetchApi<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
-  try {
-    const url = `${API_URL}${endpoint}`
-    console.log(`Fetching from: ${url}`)
-    
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error(`API error: ${response.status} ${response.statusText}`, errorText)
-      throw new Error(`API error: ${response.status} ${response.statusText} - ${errorText}`)
-    }
-
-    return response.json()
-  } catch (error) {
-    console.error('Fetch error:', error)
-    if (error instanceof Error) {
-      throw new Error(`Failed to fetch from API: ${error.message}`)
-    }
-    throw error
-  }
-}
+const API_URL = config.apiUrl
 
 export const api = {
-  get: <T>(endpoint: string) => fetchApi<T>(endpoint),
-  post: <T>(endpoint: string, data: unknown) =>
-    fetchApi<T>(endpoint, {
+  async get<T>(endpoint: string): Promise<T> {
+    const url = `${API_URL}${endpoint}`
+    console.log(`[API] GET ${url}`)
+    const response = await fetch(url)
+    if (!response.ok) {
+      throw new Error(`API error: ${response.statusText}`)
+    }
+    return response.json()
+  },
+
+  async post<T>(endpoint: string, data: any): Promise<T> {
+    const url = `${API_URL}${endpoint}`
+    console.log(`[API] POST ${url}`, data)
+    const response = await fetch(url, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify(data),
-    }),
-  put: <T>(endpoint: string, data: unknown) =>
-    fetchApi<T>(endpoint, {
+    })
+    if (!response.ok) {
+      throw new Error(`API error: ${response.statusText}`)
+    }
+    return response.json()
+  },
+
+  async put<T>(endpoint: string, data: any): Promise<T> {
+    const url = `${API_URL}${endpoint}`
+    console.log(`[API] PUT ${url}`, data)
+    const response = await fetch(url, {
       method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify(data),
-    }),
-  delete: <T>(endpoint: string) =>
-    fetchApi<T>(endpoint, {
+    })
+    if (!response.ok) {
+      throw new Error(`API error: ${response.statusText}`)
+    }
+    return response.json()
+  },
+
+  async delete<T>(endpoint: string): Promise<T> {
+    const url = `${API_URL}${endpoint}`
+    console.log(`[API] DELETE ${url}`)
+    const response = await fetch(url, {
       method: 'DELETE',
-    }),
+    })
+    if (!response.ok) {
+      throw new Error(`API error: ${response.statusText}`)
+    }
+    return response.json()
+  },
 } 
