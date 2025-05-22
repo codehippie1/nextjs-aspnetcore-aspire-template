@@ -6,4 +6,4 @@ export const config = {
 } as const
 
 // Debug log to see what URL is being used
-console.log('Config loaded with API URL:', config.apiUrl) 
+//console.log('Config loaded with API URL:', config.apiUrl) 
