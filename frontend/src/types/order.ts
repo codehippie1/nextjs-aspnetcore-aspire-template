@@ -6,10 +6,17 @@ export interface OrderItem {
   price: number
 }
 
+export interface Product {
+  id: string
+  name: string
+  description: string
+  price: number
+  stockLevel: number
+}
+
 export interface Order {
   id: string
-  customerName: string
-  customerEmail: string
+  userId: string
   state: 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled'
   totalAmount: number
   createdAt: string
