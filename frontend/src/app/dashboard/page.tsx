@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 import Dashboard from '@/components/client/dashboard'
 import { LoadingFallback } from '@/components/ui/loading-fallback'
+import { ErrorFallback } from '@/components/ui/error-fallback'
 import { api } from '@/services/api-client'
 import { endpoints } from '@/services/api-endpoints'
 import { Order } from '@/types/order'
@@ -16,18 +17,13 @@ async function getDashboardData() {
   return { orders, products }
 }
 
-// Server Component
-async function DashboardContent() {
+export default async function DashboardPage() {
   const { orders, products } = await getDashboardData()
-  return <Dashboard orders={orders} products={products} />
-}
-
-// Page Component
-export default function DashboardPage() {
+  
   return (
-    <ErrorBoundary fallback={<div className="p-4 bg-red-50 text-red-700 rounded">Something went wrong</div>}>
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
       <Suspense fallback={<LoadingFallback />}>
-        <DashboardContent />
+        <Dashboard orders={orders} products={products} />
       </Suspense>
     </ErrorBoundary>
   )
