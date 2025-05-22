@@ -1,11 +1,10 @@
 import Dashboard from '@/components/Dashboard'
-import { config } from '@/lib/config'
+import { config } from '@/services/config'
 
 async function getOrders() {
+  console.log('API URL:', config.apiUrl) // Debug log
   const res = await fetch(`${config.apiUrl}/api/orders`, { cache: 'no-store' })
-  if (!res.ok) {
-    throw new Error('Failed to fetch orders')
-  }
+  if (!res.ok) throw new Error('Failed to fetch orders')
   return res.json()
 }
 

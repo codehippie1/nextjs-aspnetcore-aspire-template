@@ -5,8 +5,8 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Next.js + ASP.NET Core Aspire Template',
-  description: 'A modern web application using Next.js and ASP.NET Core with .NET Aspire',
+  title: 'Admin Dashboard',
+  description: 'Admin dashboard for managing products, orders, and users',
 }
 
 export default function RootLayout({
